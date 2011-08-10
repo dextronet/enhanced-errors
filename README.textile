@@ -62,10 +62,10 @@ The humanized/translated attribute name "Wheels" at the beginning is gone.
 h2. Important changes to notice
 
 With the need to store the type of the error along with the message, there is a change of what you can expect when getting the error messages.
-If the error is added via the @ActiveModel::Errors#add@ method, it is stored not as a simple string with error message but as a @BetterErrorsSerialization::Errors::MessageWithType@ class that responds to @#to_s@ method, which returns the underlaying error message.
+If the error is added via the @ActiveModel::Errors#add@ method, it is stored not as a simple string with error message but as a @EnhancedErrors::MessageWithType@ class that responds to @#to_s@ method, which returns the underlaying error message.
 
 <pre>
-  car.errors[:wheels] #=> [#<struct BetterErrorsSerialization::Errors::MessageWithType>]
+  car.errors[:wheels] #=> [#<struct EnhancedErrors::MessageWithType>]
   puts car.errors[:wheels].first #=> "You can't drive with, like, no wheels, man!"
 </pre>
 
