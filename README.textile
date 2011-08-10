@@ -1,0 +1,89 @@
+h1. enhanced-errors
+
+Include "on" and "type" attributes in ActiveModel::Errors xml serialization for *Rails 3* applications and ommit redundant attribute names in full messages.
+
+h2. Usage
+
+You use the errors object in ActiveModel or ActiveRecord class just like any time before. More on ommitting redundant attribute names below.
+
+h2. XML Serialization
+
+The main difference is how serialized errors objects look like. Let's take a Car model that validates number of wheels:
+
+<pre>
+  car = Car.new
+  car.wheels = 0
+  car.valid?
+</pre>
+  
+Inspect @car.errors.to_xml@ and you'll get:
+
+<pre>
+  <errors type="array">
+    <error on="wheels" type="invalid">Wheels cannot be missing!</error>
+  </errors>
+</pre>
+  
+You can assign errors directly as you always could but with no "type" attribute there:
+
+<pre>
+  car.errors[:full_tank] = "is not really full."
+</pre>
+  
+This will result in:
+
+<pre>
+  <errors type="array">
+    <error on="wheels" type="invalid">Wheels cannot be missing!</error>
+    <error on="full_tank">Full tank is not really full.</error>
+  </errors>
+</pre>
+  
+h2. Ommitting redundant attribute names in ActiveModel:Errors#full_messages
+
+There is a new option called @:full_message@ available in the @ActiveModel::Errors#add@ method.
+
+Adding a full custom error message (not just the part that goes after the attribute name places always at the beginning of the sentence) doesn't result in quite the best result for user's eye:
+
+<pre>
+  car.errors.add :wheels, :invalid, :message => "You can't drive with, like, no wheels, man!"
+  car.errors.full_messages #=> ["Wheels You can't drive with, like, no wheels, man!"]
+</pre>
+
+With the :full_message => true option:
+
+<pre>
+  car.errors.add :wheels, :invalid, :message => "You can't drive with, like, no wheels, man!", :full_message => true
+  car.errors.full_messages #=> ["You can't drive with, like, no wheels, man!"]
+</pre>
+
+The humanized/translated attribute name "Wheels" at the beginning is gone.
+
+h2. Important changes to notice
+
+With the need to store the type of the error along with the message, there is a change of what you can expect when getting the error messages.
+If the error is added via the @ActiveModel::Errors#add@ method, it is stored not as a simple string with error message but as a @BetterErrorsSerialization::Errors::MessageWithType@ class that responds to @#to_s@ method, which returns the underlaying error message.
+
+<pre>
+  car.errors[:wheels] #=> [#<struct BetterErrorsSerialization::Errors::MessageWithType>]
+  puts car.errors[:wheels].first #=> "You can't drive with, like, no wheels, man!"
+</pre>
+
+If you add an error message directly, you'll get an array with mixin objects:
+
+<pre>
+  car.errors[:wheels] << "must have proper size."
+  car.errors[:wheels] #=> [#<struct ...>, "must have proper size."]
+</pre>
+  
+The @ActiveModel::Errors#each@ and @ActiveModel::Errors#generate_message@ methods are affected in the same manner.
+
+The @ActiveModel::Errors#full_messages@ method returns an array of full string messages as usual. But you can call it with a new option @:with_types@ to receive the mixin array:
+
+<pre>
+  car.errors.full_messages(:with_types => true) #=> [#<struct ... >, "Wheels must have proper size."]
+</pre>
+
+h2. Credits
+
+Copyright (c) 2011 Ondrej Zabojnik from "Dextronet.com":http://www.dextronet.com, released under the MIT license
