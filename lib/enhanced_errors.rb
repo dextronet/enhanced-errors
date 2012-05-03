@@ -9,14 +9,15 @@ module EnhancedErrors
     end
   end
   
-  class MessageWithType < Struct.new(:content, :type, :full_message)
+  class MessageWithType < Struct.new(:content, :type, :full_message, :xml_message)
     
     alias_method :full_message?, :full_message
+    alias_method :xml_message?, :xml_message
     
     def self.wrap(object)
       if object.is_a? MessageWithType
         # we do not want to modify the original message content
-        MessageWithType.new(object.content, object.type, object.full_message?)
+        MessageWithType.new(object.content, object.type, object.full_message?, object.xml_message?)
       else
         MessageWithType.new(object)
       end
@@ -27,7 +28,7 @@ module EnhancedErrors
     end
     
     def translate!(translated_message)
-      unless full_message?
+      unless full_message? || xml_message?
         self.full_message = true
         self.content = translated_message
       end
@@ -41,10 +42,10 @@ module EnhancedErrors
   end
   
   module InstanceMethods
-    
+
     def generate_message_with_type(attribute, type = :invalid, options = {})
       MessageWithType.new(generate_message_without_type(attribute, type, options), 
-        type, options.delete(:full_message))
+        type, options.delete(:full_message), options.delete(:xml_message))
     end
     
     def full_messages_with_type(options = {})
@@ -87,9 +88,17 @@ module EnhancedErrors
       options[:builder].instruct! unless options.delete(:skip_instruct)
       options[:builder].__send__(:method_missing, options[:root]) do |e|
         full_messages(:with_type => true) do |attribute, message|
+          xml_message = false
           attrs = { :on => attribute }
-          attrs.merge!(:type => message.type) if message.is_a?(MessageWithType) && message.type
-          options[:builder].__send__(:method_missing, options[:root].singularize, message.to_s, attrs)
+          if message.is_a?(MessageWithType)
+            attrs.merge!(:type => message.type) if message.type
+            xml_message = message.xml_message
+          end
+          if xml_message
+            options[:builder].__send__(:method_missing, options[:root].singularize, attrs) { |xml| xml << message.content }
+          else
+            options[:builder].__send__(:method_missing, options[:root].singularize, message.to_s, attrs)
+          end
         end
       end
     end
